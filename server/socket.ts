@@ -1,13 +1,15 @@
 
 import { Server } from "socket.io";
 
-const io = new Server(3001, {
+const io = new Server(3002, {
     cors: {
         origin: "*"
     }
 })
 
-console.log("🚀 Socket server running on port 3001");
+console.log("🚀 Socket server running on port 3002");
+
+const roomVideos: Record<string, string> = {}; // room ka current video store karo
 
 io.on("connection", (socket) => {
     console.log("✅ User connected:", socket.id);
@@ -15,21 +17,28 @@ io.on("connection", (socket) => {
     socket.on("join-room", (roomId) => {
         socket.join(roomId);
         console.log(`🚪 ${socket.id} joined room: ${roomId}`);
+        
+        // Agar room mein pehle se video set hai toh naye user ko bhejo
+        if (roomVideos[roomId]) {
+            socket.emit("video-change", roomVideos[roomId]);
+        }
     });
     
     socket.on("play", (roomId, time) => {
-        console.log(`▶️ Play event in room ${roomId} at ${time}`);
         socket.to(roomId).emit("play", time);
     });
     
     socket.on("pause", (roomId, time) => {
-        console.log(`⏸️ Pause event in room ${roomId} at ${time}`);
         socket.to(roomId).emit("pause", time);
     });
     
     socket.on("seek", (roomId, time) => {
-        console.log(`⏩ Seek event in room ${roomId} to ${time}`);
         socket.to(roomId).emit("seek", time);
+    });
+
+    socket.on("video-change", (roomId, videoId) => {
+        roomVideos[roomId] = videoId; // save karo
+        socket.to(roomId).emit("video-change", videoId);
     });
     
     socket.on("disconnect", () => {
