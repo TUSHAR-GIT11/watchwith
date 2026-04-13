@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 export default function Home() {
   const [roomId, setRoomId] = useState("");
+  const [focused, setFocused] = useState(false);
   const router = useRouter();
 
   const createRoom = () => {
@@ -19,91 +20,157 @@ export default function Home() {
   return (
     <div style={{
       minHeight: "100vh",
-      background: "linear-gradient(135deg, #0f0f0f 0%, #1a1a2e 50%, #16213e 100%)",
+      background: "#fafafa",
       display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      fontFamily: "'Segoe UI', sans-serif",
-      color: "white",
+      flexDirection: "column",
+      fontFamily: "'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif",
+      color: "#111",
     }}>
-      <div style={{ textAlign: "center", maxWidth: "480px", width: "100%", padding: "0 20px" }}>
-        
-        {/* Logo */}
-        <div style={{ fontSize: "64px", marginBottom: "16px" }}>🎬</div>
-        <h1 style={{ fontSize: "48px", fontWeight: "800", margin: "0 0 8px", background: "linear-gradient(90deg, #ff0000, #ff6b6b)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
-          WatchWith
-        </h1>
-        <p style={{ color: "#888", fontSize: "16px", marginBottom: "48px" }}>
-          Watch YouTube videos in sync with your friends
-        </p>
-
-        {/* Create Room */}
-        <button
-          onClick={createRoom}
-          style={{
-            width: "100%",
-            padding: "16px",
-            fontSize: "16px",
-            fontWeight: "700",
-            background: "linear-gradient(90deg, #ff0000, #cc0000)",
-            color: "white",
-            border: "none",
-            borderRadius: "12px",
-            cursor: "pointer",
-            marginBottom: "16px",
-            letterSpacing: "0.5px",
-            boxShadow: "0 4px 20px rgba(255,0,0,0.3)",
-          }}
-        >
-          + Create New Room
-        </button>
-
-        {/* Divider */}
-        <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "16px" }}>
-          <div style={{ flex: 1, height: "1px", background: "#333" }} />
-          <span style={{ color: "#555", fontSize: "14px" }}>or join existing</span>
-          <div style={{ flex: 1, height: "1px", background: "#333" }} />
+      {/* Navbar */}
+      <nav style={{
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        padding: "0 48px", height: "60px",
+        borderBottom: "1px solid #ebebeb",
+        background: "rgba(255,255,255,0.9)",
+        backdropFilter: "blur(12px)",
+        position: "sticky", top: 0, zIndex: 10,
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          <div style={{
+            width: "30px", height: "30px", borderRadius: "8px",
+            background: "linear-gradient(135deg, #7c3aed, #6d28d9)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontSize: "14px", boxShadow: "0 2px 8px rgba(124,58,237,0.3)",
+          }}>🎬</div>
+          <span style={{ fontWeight: "700", fontSize: "16px", color: "#111", letterSpacing: "-0.3px" }}>WatchWith</span>
         </div>
+        <div style={{ display: "flex", gap: "8px" }}>
+          <a href="https://github.com" target="_blank" style={{
+            padding: "7px 16px", fontSize: "13px", fontWeight: "500",
+            color: "#555", textDecoration: "none",
+            border: "1px solid #e0e0e0", borderRadius: "8px",
+            background: "white",
+          }}>GitHub ↗</a>
+        </div>
+      </nav>
 
-        {/* Join Room */}
-        <div style={{ display: "flex", gap: "10px" }}>
-          <input
-            value={roomId}
-            onChange={(e) => setRoomId(e.target.value)}
-            onKeyDown={(e)=> e.key === "Enter" && joinRoom()}
-            placeholder="Enter Room ID..."
-            style={{
-              flex: 1,
-              padding: "14px 16px",
-              fontSize: "15px",
-              background: "#1e1e1e",
-              border: "1px solid #333",
-              borderRadius: "12px",
-              color: "white",
-              outline: "none",
-            }}
-          />
-          <button
-            onClick={joinRoom}
-            style={{
-              padding: "14px 20px",
-              fontSize: "15px",
-              fontWeight: "600",
-              background: "#1e1e1e",
-              color: "white",
-              border: "1px solid #444",
-              borderRadius: "12px",
-              cursor: "pointer",
-            }}
-          >
-            Join
+      {/* Hero */}
+      <main style={{
+        flex: 1, display: "flex", alignItems: "center", justifyContent: "center",
+        padding: "60px 24px",
+      }}>
+        <div style={{ width: "100%", maxWidth: "460px" }}>
+
+          {/* Badge */}
+          <div style={{
+            display: "inline-flex", alignItems: "center", gap: "6px",
+            padding: "5px 12px",
+            background: "#f3f0ff", border: "1px solid #ddd6fe",
+            borderRadius: "20px", fontSize: "12px", fontWeight: "600",
+            color: "#7c3aed", marginBottom: "24px",
+          }}>
+            <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#7c3aed", display: "inline-block" }} />
+            Real-time sync · No signup needed
+          </div>
+
+          <h1 style={{
+            fontSize: "48px", fontWeight: "800", margin: "0 0 16px",
+            color: "#111", letterSpacing: "-1.5px", lineHeight: "1.1",
+          }}>
+            Watch together,<br />
+            <span style={{
+              background: "linear-gradient(135deg, #7c3aed, #a855f7)",
+              WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
+            }}>anywhere.</span>
+          </h1>
+
+          <p style={{ color: "#888", fontSize: "16px", margin: "0 0 40px", lineHeight: "1.6" }}>
+            Create a room, share the link, and watch YouTube videos perfectly in sync with your friends.
+          </p>
+
+          {/* Create Room */}
+          <button onClick={createRoom} style={{
+            width: "100%", padding: "15px",
+            fontSize: "15px", fontWeight: "700",
+            background: "linear-gradient(135deg, #7c3aed, #6d28d9)",
+            color: "white", border: "none", borderRadius: "14px",
+            cursor: "pointer", marginBottom: "12px",
+            boxShadow: "0 4px 20px rgba(124,58,237,0.35)",
+            letterSpacing: "0.1px",
+            transition: "transform 0.1s",
+          }}>
+            + Create New Room
           </button>
-        </div>
 
-        <p style={{ color: "#444", fontSize: "13px", marginTop: "32px" }}>
-          Share the room ID with friends to watch together
-        </p>
-      </div>
+          {/* Divider */}
+          <div style={{ display: "flex", alignItems: "center", gap: "12px", margin: "20px 0" }}>
+            <div style={{ flex: 1, height: "1px", background: "#ebebeb" }} />
+            <span style={{ color: "#bbb", fontSize: "13px" }}>or join existing</span>
+            <div style={{ flex: 1, height: "1px", background: "#ebebeb" }} />
+          </div>
+
+          {/* Join Room */}
+          <div style={{
+            display: "flex", gap: "8px",
+            background: focused ? "#fff" : "#f5f5f5",
+            border: focused ? "1.5px solid #7c3aed" : "1.5px solid #e0e0e0",
+            borderRadius: "14px", padding: "5px 5px 5px 16px",
+            transition: "all 0.2s",
+            boxShadow: focused ? "0 0 0 3px rgba(124,58,237,0.1)" : "none",
+          }}>
+            <input
+              value={roomId}
+              onChange={(e) => setRoomId(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && joinRoom()}
+              onFocus={() => setFocused(true)}
+              onBlur={() => setFocused(false)}
+              placeholder="Enter Room ID..."
+              style={{
+                flex: 1, background: "transparent", border: "none",
+                color: "#111", fontSize: "15px", outline: "none", padding: "9px 0",
+              }}
+            />
+            <button onClick={joinRoom} style={{
+              padding: "10px 20px", fontSize: "14px", fontWeight: "700",
+              background: roomId.trim() ? "linear-gradient(135deg, #7c3aed, #6d28d9)" : "#e0e0e0",
+              color: roomId.trim() ? "white" : "#aaa",
+              border: "none", borderRadius: "10px", cursor: roomId.trim() ? "pointer" : "default",
+              transition: "all 0.2s",
+              boxShadow: roomId.trim() ? "0 2px 10px rgba(124,58,237,0.25)" : "none",
+            }}>Join →</button>
+          </div>
+
+          {/* Features */}
+          <div style={{
+            display: "flex", gap: "12px", marginTop: "40px",
+          }}>
+            {[
+              { icon: "⚡", label: "Instant sync" },
+              { icon: "💬", label: "Live chat" },
+              { icon: "🔗", label: "Easy sharing" },
+            ].map((f) => (
+              <div key={f.label} style={{
+                flex: 1, padding: "12px",
+                background: "white", border: "1px solid #ebebeb",
+                borderRadius: "12px", textAlign: "center",
+                boxShadow: "0 1px 4px rgba(0,0,0,0.04)",
+              }}>
+                <div style={{ fontSize: "20px", marginBottom: "4px" }}>{f.icon}</div>
+                <div style={{ fontSize: "12px", fontWeight: "600", color: "#555" }}>{f.label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </main>
+
+      {/* Footer */}
+      <footer style={{
+        textAlign: "center", padding: "20px",
+        borderTop: "1px solid #ebebeb",
+        fontSize: "12px", color: "#ccc",
+      }}>
+        Built with Next.js · Socket.io · Made with ❤️
+      </footer>
     </div>
   );
 }
