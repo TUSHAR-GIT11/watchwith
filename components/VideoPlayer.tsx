@@ -81,7 +81,7 @@ export default function VideoPlayer({ roomId, videoId, onVideoChange, onEmitRead
 
   const joinRoom = () => {
     setJoined(true);
-    socketRef.current = io("http://localhost:3002");
+    socketRef.current = io(process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:3002");
 
     socketRef.current.on("disconnect", () => setConnected(false));
 
