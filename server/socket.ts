@@ -17,9 +17,9 @@ io.on("connection", (socket) => {
 
     let socketUsername = "";
     let socketRoomId = "";
-    let lastAction = 0; // rate limit tracker
+    let lastAction = 0; 
 
-    // ── JOIN ROOM ──────────────────────────────────────────────
+    
     socket.on("join-room", (roomId) => {
         socket.join(roomId);
         socketRoomId = roomId;
