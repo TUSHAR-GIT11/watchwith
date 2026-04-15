@@ -21,15 +21,12 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
-        working-directory: watchwith
 
       - name: Type check
         run: npx tsc --noEmit
-        working-directory: watchwith
 
       - name: Build Next.js
         run: npm run build
-        working-directory: watchwith
 
   docker:
     needs: build
@@ -41,4 +38,3 @@ jobs:
 
       - name: Build Docker images
         run: docker compose build
-        working-directory: watchwith
