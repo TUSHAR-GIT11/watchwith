@@ -8,9 +8,9 @@ console.log("🚀 Socket server running on port 3002");
 
 // Room state: videoId + current time + isPlaying
 const roomState: Record<string, { videoId: string; time: number; isPlaying: boolean }> = {};
-
 // Room users: socketId -> username
 const roomUsers: Record<string, Record<string, string>> = {};
+const roomQueue: Record<string, string[]> = {}
 
 io.on("connection", (socket) => {
     console.log("✅ User connected:", socket.id);
@@ -18,7 +18,7 @@ io.on("connection", (socket) => {
     let socketUsername = "";
     let socketRoomId = "";
     let lastAction = 0; 
-
+   
     
     socket.on("join-room", (roomId) => {
         socket.join(roomId);
@@ -36,6 +36,20 @@ io.on("connection", (socket) => {
         } else {
             console.log(`⚠️ No saved state for room: ${roomId}`);
         }
+    });
+
+    socket.on("add-to-queue", (roomId, videoId) => {
+       if (!roomQueue[roomId]) roomQueue[roomId] = [];
+       roomQueue[roomId].push(videoId);
+       io.to(roomId).emit("queue-update", roomQueue[roomId]);
+    });
+
+    socket.on("play-next", (roomId) => {
+        if (!roomQueue[roomId] || roomQueue[roomId].length === 0) return;
+        const nextVideo = roomQueue[roomId].shift();
+        roomState[roomId] = { videoId: nextVideo!, time: 0, isPlaying: false };
+        io.to(roomId).emit("video-change", nextVideo);
+        io.to(roomId).emit("queue-update", roomQueue[roomId]);
     });
 
     // ── PLAY ──────────────────────────────────────────────────

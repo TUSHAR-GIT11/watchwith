@@ -2,6 +2,7 @@
 
 import { useState, use, useRef } from "react";
 import VideoPlayer from "@/components/VideoPlayer";
+import { useTheme } from "@/components/ThemeContext";
 
 export default function RoomPage({ params }: any) {
   const { id } = use(params) as { id: string };
@@ -9,7 +10,11 @@ export default function RoomPage({ params }: any) {
   const [urlInput, setUrlInput] = useState("");
   const [copied, setCopied] = useState(false);
   const [inputFocused, setInputFocused] = useState(false);
+  const { theme, toggleTheme } = useTheme();
   const emitVideoChangeRef = useRef<((vid: string) => void) | null>(null);
+  const addToQueueRef = useRef<((vid: string) => void) | null>(null);
+
+  const D = theme === "dark";
 
   const extractVideoId = (url: string) => {
     const match = url.match(/(?:v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
@@ -20,7 +25,7 @@ export default function RoomPage({ params }: any) {
     const extracted = extractVideoId(urlInput);
     if (extracted) {
       setVideoId(extracted);
-      emitVideoChangeRef.current?.(extracted); // socket emit via VideoPlayer
+      emitVideoChangeRef.current?.(extracted);
       setUrlInput("");
     } else {
       alert("Invalid YouTube URL");
@@ -36,18 +41,19 @@ export default function RoomPage({ params }: any) {
   return (
     <div style={{
       minHeight: "100vh",
-      background: "#f7f7f9",
-      color: "#111",
+      background: D ? "#0d0d14" : "#f7f7f9",
+      color: D ? "#f0eeff" : "#111",
       fontFamily: "'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif",
       display: "flex", flexDirection: "column",
+      transition: "background 0.3s, color 0.3s",
     }}>
       {/* Navbar */}
       <nav style={{
         display: "flex", alignItems: "center", justifyContent: "space-between",
         padding: "0 24px", height: "60px",
-        background: "rgba(255,255,255,0.95)",
+        background: D ? "rgba(13,13,20,0.95)" : "rgba(255,255,255,0.95)",
         backdropFilter: "blur(16px)",
-        borderBottom: "1px solid #ebebeb",
+        borderBottom: `1px solid ${D ? "rgba(255,255,255,0.07)" : "#ebebeb"}`,
         position: "sticky", top: 0, zIndex: 100,
         boxShadow: "0 1px 12px rgba(0,0,0,0.05)",
       }}>
@@ -62,19 +68,16 @@ export default function RoomPage({ params }: any) {
             display: "flex", alignItems: "center", justifyContent: "center",
             fontSize: "14px", boxShadow: "0 2px 8px rgba(124,58,237,0.3)",
           }}>🎬</div>
-          <span style={{ fontWeight: "700", fontSize: "16px", color: "#111", letterSpacing: "-0.3px" }}>WatchWith</span>
+          <span style={{ fontWeight: "700", fontSize: "16px", letterSpacing: "-0.3px" }}>WatchWith</span>
         </a>
 
         {/* URL Input */}
-        <div style={{
-          display: "flex", gap: "8px", flex: 1, maxWidth: "480px", margin: "0 24px",
-        }}>
+        <div style={{ display: "flex", gap: "8px", flex: 1, maxWidth: "480px", margin: "0 24px" }}>
           <div style={{
             flex: 1, display: "flex", alignItems: "center",
-            background: inputFocused ? "#fff" : "#f2f2f5",
-            border: inputFocused ? "1.5px solid #7c3aed" : "1.5px solid #e0e0e0",
-            borderRadius: "10px", padding: "0 12px",
-            transition: "all 0.2s",
+            background: inputFocused ? (D ? "rgba(124,58,237,0.08)" : "#fff") : (D ? "rgba(255,255,255,0.05)" : "#f2f2f5"),
+            border: inputFocused ? "1.5px solid #7c3aed" : `1.5px solid ${D ? "rgba(255,255,255,0.1)" : "#e0e0e0"}`,
+            borderRadius: "10px", padding: "0 12px", transition: "all 0.2s",
             boxShadow: inputFocused ? "0 0 0 3px rgba(124,58,237,0.1)" : "none",
           }}>
             <span style={{ fontSize: "12px", marginRight: "7px", opacity: 0.4 }}>🔗</span>
@@ -87,7 +90,7 @@ export default function RoomPage({ params }: any) {
               placeholder="Paste YouTube URL..."
               style={{
                 flex: 1, background: "transparent", border: "none",
-                color: "#111", fontSize: "13px", outline: "none", padding: "9px 0",
+                color: D ? "#f0eeff" : "#111", fontSize: "13px", outline: "none", padding: "9px 0",
               }}
             />
           </div>
@@ -96,29 +99,61 @@ export default function RoomPage({ params }: any) {
             background: "linear-gradient(135deg, #7c3aed, #6d28d9)",
             color: "white", border: "none", borderRadius: "10px",
             cursor: "pointer", fontWeight: "700", fontSize: "13px",
-            boxShadow: "0 2px 10px rgba(124,58,237,0.3)",
-            whiteSpace: "nowrap",
+            boxShadow: "0 2px 10px rgba(124,58,237,0.3)", whiteSpace: "nowrap",
           }}>▶ Load</button>
+          <button onClick={() => {
+            const extracted = extractVideoId(urlInput);
+            if (!extracted) { alert("Invalid YouTube URL"); return; }
+            if (!addToQueueRef.current) { alert("Join the room first!"); return; }
+            addToQueueRef.current(extracted);
+            setUrlInput("");
+          }} style={{
+            padding: "0 16px",
+            background: D ? "rgba(124,58,237,0.15)" : "#f3f0ff",
+            border: `1.5px solid ${D ? "rgba(124,58,237,0.3)" : "#ddd6fe"}`,
+            color: "#7c3aed", borderRadius: "10px",
+            cursor: "pointer", fontWeight: "700", fontSize: "13px", whiteSpace: "nowrap",
+          }}>+ Queue</button>
         </div>
 
-        {/* Room chip */}
-        <div onClick={copyRoomId} style={{
-          display: "flex", alignItems: "center", gap: "8px",
-          padding: "7px 14px",
-          background: copied ? "#f3f0ff" : "#f2f2f5",
-          border: copied ? "1.5px solid #c4b5fd" : "1.5px solid #e0e0e0",
-          borderRadius: "10px", cursor: "pointer", fontSize: "13px",
-          transition: "all 0.2s", flexShrink: 0,
-        }}>
-          <span style={{ color: "#aaa", fontSize: "11px", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.5px" }}>Room</span>
-          <span style={{ color: "#111", fontWeight: "700", letterSpacing: "0.5px" }}>{id}</span>
-          <span style={{ fontSize: "12px" }}>{copied ? "✅" : "📋"}</span>
+        {/* Right side — theme toggle + room chip */}
+        <div style={{ display: "flex", alignItems: "center", gap: "8px", flexShrink: 0 }}>
+          {/* Theme toggle */}
+          <button onClick={toggleTheme} style={{
+            width: "36px", height: "36px",
+            background: D ? "rgba(255,255,255,0.08)" : "#f2f2f5",
+            border: `1px solid ${D ? "rgba(255,255,255,0.1)" : "#e0e0e0"}`,
+            borderRadius: "10px", cursor: "pointer", fontSize: "16px",
+            display: "flex", alignItems: "center", justifyContent: "center",
+          }}>
+            {D ? "☀️" : "🌙"}
+          </button>
+
+          {/* Room chip */}
+          <div onClick={copyRoomId} style={{
+            display: "flex", alignItems: "center", gap: "8px",
+            padding: "7px 14px",
+            background: copied ? (D ? "rgba(124,58,237,0.2)" : "#f3f0ff") : (D ? "rgba(255,255,255,0.06)" : "#f2f2f5"),
+            border: copied ? "1.5px solid #c4b5fd" : `1.5px solid ${D ? "rgba(255,255,255,0.1)" : "#e0e0e0"}`,
+            borderRadius: "10px", cursor: "pointer", fontSize: "13px", transition: "all 0.2s",
+          }}>
+            <span style={{ color: D ? "#555" : "#aaa", fontSize: "11px", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.5px" }}>Room</span>
+            <span style={{ fontWeight: "700", letterSpacing: "0.5px" }}>{id}</span>
+            <span style={{ fontSize: "12px" }}>{copied ? "✅" : "📋"}</span>
+          </div>
         </div>
       </nav>
 
       {/* Body */}
       <div style={{ flex: 1, padding: "20px 24px" }}>
-        <VideoPlayer roomId={id} videoId={videoId} onVideoChange={setVideoId} onEmitReady={(fn) => { emitVideoChangeRef.current = fn; }} />
+        <VideoPlayer
+          roomId={id}
+          videoId={videoId}
+          onVideoChange={setVideoId}
+          onEmitReady={(fn) => { emitVideoChangeRef.current = fn; }}
+          onQueueReady={(fn) => { addToQueueRef.current = fn; }}
+          theme={theme}
+        />
       </div>
     </div>
   );

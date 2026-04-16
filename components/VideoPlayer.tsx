@@ -4,20 +4,22 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { io, Socket } from "socket.io-client";
 
-const V = "#7c3aed";
-const V2 = "#6d28d9";
-const CARD = "#ffffff";
-const BORDER = "#ebebeb";
-const TEXT = "#111111";
-const MUTED = "#999999";
-const SUBTLE = "#f2f2f5";
-
-export default function VideoPlayer({ roomId, videoId, onVideoChange, onEmitReady }: {
+export default function VideoPlayer({ roomId, videoId, onVideoChange, onEmitReady, onQueueReady, theme = "light" }: {
   roomId: string;
   videoId: string;
   onVideoChange: (videoId: string) => void;
   onEmitReady?: (fn: (videoId: string) => void) => void;
+  onQueueReady?: (fn: (videoId: string) => void) => void;
+  theme?: "light" | "dark";
 }) {
+  const D = theme === "dark";
+  const CARD = D ? "#13131f" : "#ffffff";
+  const BORDER = D ? "rgba(255,255,255,0.08)" : "#ebebeb";
+  const TEXT = D ? "#f0eeff" : "#111111";
+  const MUTED = D ? "#555577" : "#999999";
+  const SUBTLE = D ? "rgba(255,255,255,0.05)" : "#f2f2f5";
+  const V = "#7c3aed";
+  const V2 = "#6d28d9";
   const playerRef = useRef<any>(null);
   const isSyncing = useRef(false);
   const socketRef = useRef<Socket | null>(null);
@@ -36,6 +38,7 @@ export default function VideoPlayer({ roomId, videoId, onVideoChange, onEmitRead
   const [nameFocused, setNameFocused] = useState(false);
   const [typingUser, setTypingUser] = useState("");
   const [reactions, setReactions] = useState<{ id: number; emoji: string; left: number, user: string }[]>([]);
+  const [queue, setQueue] = useState<string[]>([])
   const router = useRouter()
 
   const getTime = () => new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
@@ -79,6 +82,14 @@ export default function VideoPlayer({ roomId, videoId, onVideoChange, onEmitRead
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // Queue functions — joinRoom ke bahar
+  const addToQueue = (vid: string) => {
+    socketRef.current?.emit("add-to-queue", roomId, vid);
+  };
+
+  const playNext = () => {
+    socketRef.current?.emit("play-next", roomId);
+  };
   const joinRoom = () => {
     setJoined(true);
     socketRef.current = io(process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:3002");
@@ -95,11 +106,26 @@ export default function VideoPlayer({ roomId, videoId, onVideoChange, onEmitRead
       videoIdRef.current = newVideoId;
       onVideoChange(newVideoId);
     });
+    socketRef.current.on("queue-update", (q: string[]) => {
+      setQueue(q);
+    });
 
     socketRef.current.on("sync-state", (state: { videoId: string; time: number; isPlaying: boolean }) => {
       if (!state) return;
       videoIdRef.current = state.videoId;
       onVideoChange(state.videoId);
+
+      const trySeek = () => {
+        if (playerReady.current && playerRef.current) {
+          playerRef.current.seekTo(state.time, true);
+          if (state.isPlaying) {
+            playerRef.current.playVideo();
+          }
+        } else {
+          window.setTimeout(trySeek, 300);
+        }
+      };
+      trySeek(); // call karo
     });
 
     socketRef.current.on("typing", (user: string) => {
@@ -147,6 +173,7 @@ export default function VideoPlayer({ roomId, videoId, onVideoChange, onEmitRead
       socketRef.current?.emit("join-room", roomId);
       socketRef.current?.emit("set-username", roomId, myName);
       onEmitReady?.(emitVideoChange);
+      onQueueReady?.(addToQueue)
     });
 
     const initPlayer = () => {
@@ -188,7 +215,7 @@ export default function VideoPlayer({ roomId, videoId, onVideoChange, onEmitRead
   // ── Join Screen ────────────────────────────────────────────────
   if (!joined) {
     return (
-      <div style={{ minHeight: "80vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div style={{ minHeight: "80vh", display: "flex", alignItems: "center", justifyContent: "center", background: D ? "#0d0d14" : "transparent" }}>
         <div style={{
           width: "100%", maxWidth: "400px", background: CARD, borderRadius: "20px",
           padding: "44px 36px", textAlign: "center",
@@ -353,6 +380,60 @@ export default function VideoPlayer({ roomId, videoId, onVideoChange, onEmitRead
             background: `linear-gradient(90deg, ${V}, #a78bfa, ${V2})`, zIndex: 2,
           }} />
           <div id="yt-player" style={{ width: "100%", height: "100%" }} />
+
+          {/* Queue — floating top right inside player */}
+          {queue.length > 0 && (
+            <div style={{
+              position: "absolute", top: "12px", right: "12px", zIndex: 10,
+              background: "rgba(255,255,255,0.95)",
+              backdropFilter: "blur(12px)",
+              border: `1px solid ${BORDER}`,
+              borderRadius: "12px",
+              overflow: "hidden",
+              boxShadow: "0 4px 20px rgba(0,0,0,0.15)",
+              minWidth: "220px",
+              maxWidth: "260px",
+            }}>
+              {/* Header */}
+              <div style={{
+                background: `linear-gradient(135deg, ${V}, ${V2})`,
+                padding: "6px 12px",
+                display: "flex", alignItems: "center", justifyContent: "space-between",
+              }}>
+                <span style={{ fontSize: "11px", fontWeight: "700", color: "white" }}>🎵 QUEUE</span>
+                <span style={{
+                  background: "rgba(255,255,255,0.25)", color: "white",
+                  fontSize: "10px", fontWeight: "600", padding: "1px 7px", borderRadius: "20px",
+                }}>{queue.length}</span>
+              </div>
+
+              {/* Next video */}
+              <div style={{ padding: "8px 12px", display: "flex", alignItems: "center", gap: "8px" }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: "9px", color: MUTED, fontWeight: "700", marginBottom: "2px", letterSpacing: "0.5px" }}>UP NEXT</div>
+                  <div style={{
+                    fontSize: "11px", color: TEXT, fontWeight: "600",
+                    overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                  }}>youtu.be/{queue[0]}</div>
+                </div>
+                <button onClick={playNext} style={{
+                  padding: "5px 10px", flexShrink: 0,
+                  background: `linear-gradient(135deg, ${V}, ${V2})`,
+                  color: "white", border: "none", borderRadius: "6px",
+                  cursor: "pointer", fontSize: "11px", fontWeight: "700",
+                  boxShadow: "0 2px 6px rgba(124,58,237,0.3)",
+                }}>▶</button>
+              </div>
+
+              {/* More */}
+              {queue.length > 1 && (
+                <div style={{
+                  padding: "4px 12px 8px",
+                  fontSize: "10px", color: MUTED, fontWeight: "500",
+                }}>+{queue.length - 1} more in queue</div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
