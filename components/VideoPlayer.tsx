@@ -39,6 +39,7 @@ export default function VideoPlayer({ roomId, videoId, onVideoChange, onEmitRead
   const [typingUser, setTypingUser] = useState("");
   const [reactions, setReactions] = useState<{ id: number; emoji: string; left: number, user: string }[]>([]);
   const [queue, setQueue] = useState<string[]>([])
+  const [toasts, setToasts] = useState<{ id: number; msg: string; type: "join" | "leave" }[]>([])
   const router = useRouter()
 
   const getTime = () => new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
@@ -49,6 +50,14 @@ export default function VideoPlayer({ roomId, videoId, onVideoChange, onEmitRead
     videoIdRef.current = newVideoId;
     onVideoChange(newVideoId);
   };
+
+  const showToast = (msg: string, type: "join" | "leave") => {
+    const id = Date.now()
+    setToasts(prev => [...prev, { id, msg, type }])
+    setTimeout(() => {
+      setToasts(prev => prev.filter(t => t.id !== id))
+    }, 5000)
+  }
 
   const sendReaction = (emoji: string) => {
     const id = Date.now();
@@ -93,6 +102,15 @@ export default function VideoPlayer({ roomId, videoId, onVideoChange, onEmitRead
   const joinRoom = () => {
     setJoined(true);
     socketRef.current = io(process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:3002");
+
+    socketRef.current.on("user-joined", (username: string) => {
+      showToast(`${username} joined the room 👋`, "join");
+    });
+
+
+    socketRef.current.on("user-left", (username: string) => {
+      showToast(`${username} left the room`, "leave");
+    });
 
     socketRef.current.on("disconnect", () => setConnected(false));
 
@@ -270,6 +288,27 @@ export default function VideoPlayer({ roomId, videoId, onVideoChange, onEmitRead
   return (
     <div style={{ display: "flex", gap: "16px", height: "calc(100vh - 100px)" }}>
 
+      {/* Toasts */}
+      <div style={{ position: "fixed", bottom: "24px", left: "50%", transform: "translateX(-50%)", zIndex: 9999, display: "flex", flexDirection: "column", gap: "8px", alignItems: "center" }}>
+        {toasts.map(t => (
+          <div key={t.id} style={{
+            position: "fixed", bottom: "24px", left: "50%",
+            transform: "translateX(-50%)",
+            background: t.type === "join" ? "#f0fdf4" : "#fef2f2",
+            border: `1px solid ${t.type === "join" ? "#bbf7d0" : "#fecaca"}`,
+            color: t.type === "join" ? "#15803d" : "#dc2626",
+            padding: "10px 20px", borderRadius: "12px",
+            fontSize: "13px", fontWeight: "600",
+            boxShadow: "0 4px 20px rgba(0,0,0,0.1)",
+            zIndex: 9999,
+            animation: "fadeIn 0.3s ease",
+            whiteSpace: "nowrap",
+          }}>
+            {t.msg}
+          </div>
+        ))}
+      </div>
+
       {/* Left: Video */}
       <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "10px", minWidth: 0 }}>
         {/* Status bar */}
@@ -446,7 +485,7 @@ export default function VideoPlayer({ roomId, videoId, onVideoChange, onEmitRead
         {/* Header */}
         <div style={{
           padding: "14px 16px", borderBottom: `1px solid ${BORDER}`,
-          display: "flex", alignItems: "center", gap: "10px", background: "#fdfcff",
+          display: "flex", alignItems: "center", gap: "10px", background: D ? "#0f0f1a" : "#fdfcff",
         }}>
           <div style={{
             width: "34px", height: "34px", background: "linear-gradient(135deg, #ede9fe, #ddd6fe)",
@@ -473,8 +512,8 @@ export default function VideoPlayer({ roomId, videoId, onVideoChange, onEmitRead
         {/* Messages */}
         <div style={{
           flex: 1, overflowY: "auto", padding: "12px 10px",
-          display: "flex", flexDirection: "column", gap: "8px", background: "#fafafa",
-          scrollbarWidth: "thin", scrollbarColor: "#e0e0e0 transparent",
+          display: "flex", flexDirection: "column", gap: "8px", background: D ? "#0d0d14" : "#fafafa",
+          scrollbarWidth: "thin", scrollbarColor: `${D ? "#2a2a3a" : "#e0e0e0"} transparent`,
         }}>
           {messages.length === 0 && (
             <div style={{
@@ -527,7 +566,7 @@ export default function VideoPlayer({ roomId, videoId, onVideoChange, onEmitRead
         <div style={{ padding: "10px", borderTop: `1px solid ${BORDER}`, background: CARD }}>
           <div style={{
             display: "flex", gap: "6px",
-            background: inputFocused ? "#fdfcff" : SUBTLE,
+            background: inputFocused ? (D ? "rgba(124,58,237,0.08)" : "#fdfcff") : SUBTLE,
             border: inputFocused ? `1.5px solid ${V}` : `1.5px solid ${BORDER}`,
             borderRadius: "12px", padding: "4px 4px 4px 12px", transition: "all 0.2s",
             boxShadow: inputFocused ? `0 0 0 3px rgba(124,58,237,0.1)` : "none",

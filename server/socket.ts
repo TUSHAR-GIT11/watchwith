@@ -118,6 +118,7 @@ io.on("connection", (socket) => {
         const userList = Object.values(roomUsers[roomId]);
         io.to(roomId).emit("users-updated", userList);
         console.log(`👤 ${username} joined room ${roomId}`);
+        socket.to(roomId).emit("user-joined",username)
     });
 
     // ── DISCONNECT ────────────────────────────────────────────
@@ -133,6 +134,7 @@ io.on("connection", (socket) => {
             io.to(socketRoomId).emit("user-count", count);
 
             console.log(`👋 ${socketUsername} left room ${socketRoomId}`);
+            io.to(socketRoomId).emit("user-left",socketUsername)
         }
     });
 });
