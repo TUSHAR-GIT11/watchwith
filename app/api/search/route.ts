@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
 
     const videos = data.items?.map((item: any) => ({
         videoId: item.id.videoId,
-        item: item.snippet.title,
+        title: item.snippet.title,
         thumbnail: item.snippet.thumbnails.medium.url,
         channel: item.snippet.channelTitle
     })) || [];

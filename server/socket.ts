@@ -6,42 +6,60 @@ const io = new Server(3002, {
 
 console.log("🚀 Socket server running on port 3002");
 
-// Room state: videoId + current time + isPlaying
 const roomState: Record<string, { videoId: string; time: number; isPlaying: boolean }> = {};
-// Room users: socketId -> username
 const roomUsers: Record<string, Record<string, string>> = {};
-const roomQueue: Record<string, string[]> = {}
+const roomQueue: Record<string, string[]> = {};
+const roomHost: Record<string, string> = {};
+const roomControlMode: Record<string, "host" | "all"> = {};
 
 io.on("connection", (socket) => {
     console.log("✅ User connected:", socket.id);
 
     let socketUsername = "";
     let socketRoomId = "";
-    let lastAction = 0; 
-   
-    
+    let lastAction = 0;
+
     socket.on("join-room", (roomId) => {
         socket.join(roomId);
         socketRoomId = roomId;
         console.log(`🚪 ${socket.id} joined room: ${roomId}`);
 
-        // user count
+        // Pehla user = host
+        if (!roomHost[roomId]) {
+            roomHost[roomId] = socket.id;
+            roomControlMode[roomId] = "host";
+            console.log(`👑 ${socket.id} is now host of room: ${roomId}`);
+        }
+
         const count = io.sockets.adapter.rooms.get(roomId)?.size || 0;
         io.to(roomId).emit("user-count", count);
 
-        // send full room state to new user (video + time + isPlaying)
+        // Sync state + host info bhejo naye user ko
         if (roomState[roomId]) {
-            console.log(`📺 Syncing state to new user: ${JSON.stringify(roomState[roomId])}`);
             socket.emit("sync-state", roomState[roomId]);
-        } else {
-            console.log(`⚠️ No saved state for room: ${roomId}`);
         }
+
+        socket.emit("host-info", {
+            hostSocketId: roomHost[roomId],
+            controlMode: roomControlMode[roomId] || "host",
+        });
+    });
+
+    socket.on("set-control-mode", (roomId, mode: "host" | "all") => {
+        // Sirf host change kar sakta hai
+        if (roomHost[roomId] !== socket.id) return;
+        roomControlMode[roomId] = mode;
+        io.to(roomId).emit("control-mode-changed", {
+            hostSocketId: roomHost[roomId],
+            controlMode: mode,
+        });
+        console.log(`🎛️ Room ${roomId} control mode: ${mode}`);
     });
 
     socket.on("add-to-queue", (roomId, videoId) => {
-       if (!roomQueue[roomId]) roomQueue[roomId] = [];
-       roomQueue[roomId].push(videoId);
-       io.to(roomId).emit("queue-update", roomQueue[roomId]);
+        if (!roomQueue[roomId]) roomQueue[roomId] = [];
+        roomQueue[roomId].push(videoId);
+        io.to(roomId).emit("queue-update", roomQueue[roomId]);
     });
 
     socket.on("play-next", (roomId) => {
@@ -52,11 +70,13 @@ io.on("connection", (socket) => {
         io.to(roomId).emit("queue-update", roomQueue[roomId]);
     });
 
-    // ── PLAY ──────────────────────────────────────────────────
     socket.on("play", (roomId, time) => {
-        // rate limit: max 1 play event per 500ms per socket
         if (Date.now() - lastAction < 500) return;
         lastAction = Date.now();
+
+        // Guard: sirf host ya "all" mode mein allowed
+        const mode = roomControlMode[roomId] || "host";
+        if (mode === "host" && roomHost[roomId] !== socket.id) return;
 
         if (roomState[roomId]) {
             roomState[roomId].isPlaying = true;
@@ -65,8 +85,10 @@ io.on("connection", (socket) => {
         socket.to(roomId).emit("play", time);
     });
 
-    // ── PAUSE ─────────────────────────────────────────────────
     socket.on("pause", (roomId, time) => {
+        const mode = roomControlMode[roomId] || "host";
+        if (mode === "host" && roomHost[roomId] !== socket.id) return;
+
         if (roomState[roomId]) {
             roomState[roomId].isPlaying = false;
             roomState[roomId].time = time;
@@ -74,26 +96,26 @@ io.on("connection", (socket) => {
         socket.to(roomId).emit("pause", time);
     });
 
-    // ── SEEK ──────────────────────────────────────────────────
     socket.on("seek", (roomId, time) => {
+        const mode = roomControlMode[roomId] || "host";
+        if (mode === "host" && roomHost[roomId] !== socket.id) return;
+
         if (roomState[roomId]) {
             roomState[roomId].time = time;
         }
         socket.to(roomId).emit("seek", time);
     });
 
-    // ── VIDEO CHANGE ──────────────────────────────────────────
     socket.on("video-change", (roomId, videoId) => {
         roomState[roomId] = { videoId, time: 0, isPlaying: false };
         console.log(`🎬 Video saved: room=${roomId} video=${videoId}`);
         socket.to(roomId).emit("video-change", videoId);
     });
 
-    socket.on("reaction",(roomId,emoji,username)=>{
-        socket.to(roomId).emit("reaction", emoji, username)
-    })
+    socket.on("reaction", (roomId, emoji, username) => {
+        socket.to(roomId).emit("reaction", emoji, username);
+    });
 
-    // ── CHAT MESSAGE ──────────────────────────────────────────
     socket.on("chat-message", (roomId, username, message) => {
         const msgData = {
             id: `${Date.now()}-${socket.id}`,
@@ -104,12 +126,10 @@ io.on("connection", (socket) => {
         socket.to(roomId).emit("chat-message", msgData.user, msgData.text);
     });
 
-    // ── TYPING INDICATOR ─────────────────────────────────────
     socket.on("typing", (roomId, username) => {
         socket.to(roomId).emit("typing", username);
     });
 
-    // ── SET USERNAME ──────────────────────────────────────────
     socket.on("set-username", (roomId, username) => {
         socketUsername = username;
         if (!roomUsers[roomId]) roomUsers[roomId] = {};
@@ -118,23 +138,40 @@ io.on("connection", (socket) => {
         const userList = Object.values(roomUsers[roomId]);
         io.to(roomId).emit("users-updated", userList);
         console.log(`👤 ${username} joined room ${roomId}`);
-        socket.to(roomId).emit("user-joined",username)
+        socket.to(roomId).emit("user-joined", username);
     });
 
-    // ── DISCONNECT ────────────────────────────────────────────
     socket.on("disconnect", () => {
         console.log("❌ User disconnected:", socket.id);
 
         if (socketRoomId && roomUsers[socketRoomId]) {
-            delete roomUsers[socketRoomId][socket.id]; // remove by socketId — no duplicates
+            delete roomUsers[socketRoomId][socket.id];
             const userList = Object.values(roomUsers[socketRoomId]);
             io.to(socketRoomId).emit("users-updated", userList);
 
             const count = io.sockets.adapter.rooms.get(socketRoomId)?.size || 0;
             io.to(socketRoomId).emit("user-count", count);
 
+            // Agar host disconnect hua → next user ko host banao
+            if (roomHost[socketRoomId] === socket.id) {
+                const remaining = Object.keys(roomUsers[socketRoomId]);
+                if (remaining.length > 0) {
+                    roomHost[socketRoomId] = remaining[0];
+                    io.to(socketRoomId).emit("control-mode-changed", {
+                        hostSocketId: remaining[0],
+                        controlMode: roomControlMode[socketRoomId] || "host",
+                    });
+                    console.log(`👑 New host: ${remaining[0]}`);
+                } else {
+                    delete roomHost[socketRoomId];
+                    delete roomControlMode[socketRoomId];
+                    delete roomState[socketRoomId];
+                    delete roomQueue[socketRoomId];
+                }
+            }
+
             console.log(`👋 ${socketUsername} left room ${socketRoomId}`);
-            io.to(socketRoomId).emit("user-left",socketUsername)
+            io.to(socketRoomId).emit("user-left", socketUsername);
         }
     });
 });

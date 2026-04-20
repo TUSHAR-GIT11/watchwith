@@ -39,6 +39,10 @@ export default function VideoPlayer({ roomId, videoId, onVideoChange, onEmitRead
   const [typingUser, setTypingUser] = useState("");
   const [reactions, setReactions] = useState<{ id: number; emoji: string; left: number, user: string }[]>([]);
   const [queue, setQueue] = useState<string[]>([])
+  const [isHost, setIsHost] = useState(false)
+  const [controlMode, setControlMode] = useState<"host" | "all">("host")
+  const canControlRef = useRef(false)
+  const hostInfoReceived = useRef(false)
   const [toasts, setToasts] = useState<{ id: number; msg: string; type: "join" | "leave" }[]>([])
   const router = useRouter()
 
@@ -50,6 +54,9 @@ export default function VideoPlayer({ roomId, videoId, onVideoChange, onEmitRead
     videoIdRef.current = newVideoId;
     onVideoChange(newVideoId);
   };
+
+  const canControl = isHost || controlMode === "all";
+  canControlRef.current = canControl
 
   const showToast = (msg: string, type: "join" | "leave") => {
     const id = Date.now()
@@ -184,6 +191,21 @@ export default function VideoPlayer({ roomId, videoId, onVideoChange, onEmitRead
       setTimeout(() => (isSyncing.current = false), 500);
     });
 
+    socketRef.current.on("host-info", (data: { hostSocketId: string; controlMode: "host" | "all" }) => {
+      const iAm = socketRef.current?.id === data.hostSocketId;
+      setIsHost(iAm);
+      setControlMode(data.controlMode);
+      canControlRef.current = iAm || data.controlMode === "all";
+      hostInfoReceived.current = true;
+    });
+
+    socketRef.current.on("control-mode-changed", (data: { hostSocketId: string; controlMode: "host" | "all" }) => {
+      const iAm = socketRef.current?.id === data.hostSocketId;
+      setIsHost(iAm);
+      setControlMode(data.controlMode);
+      canControlRef.current = iAm || data.controlMode === "all";
+    });
+
     // connect LAST — sabhi listeners ready hone ke baad
     socketRef.current.on("connect", () => {
       setConnected(true);
@@ -202,6 +224,7 @@ export default function VideoPlayer({ roomId, videoId, onVideoChange, onEmitRead
           onReady: () => { playerReady.current = true; },
           onStateChange: (event: any) => {
             if (isSyncing.current) return;
+            if (!hostInfoReceived.current || !canControlRef.current) return;
             const time = playerRef.current?.getCurrentTime() || 0;
             if (event.data === 1) socketRef.current?.emit("play", roomId, time);
             if (event.data === 2) socketRef.current?.emit("pause", roomId, time);
@@ -346,6 +369,25 @@ export default function VideoPlayer({ roomId, videoId, onVideoChange, onEmitRead
             borderRadius: "20px", color: "#dc2626",
             fontSize: "11px", fontWeight: "600", cursor: "pointer",
           }}>Leave</button>
+          {isHost && (
+            <button
+              onClick={() => {
+                const newMode = controlMode === "host" ? "all" : "host";
+                socketRef.current?.emit("set-control-mode", roomId, newMode);
+                setControlMode(newMode);
+              }}
+              style={{
+                padding: "3px 12px",
+                background: controlMode === "host" ? "#fef9c3" : "#f0fdf4",
+                border: `1px solid ${controlMode === "host" ? "#fde047" : "#bbf7d0"}`,
+                borderRadius: "20px",
+                color: controlMode === "host" ? "#854d0e" : "#15803d",
+                fontSize: "11px", fontWeight: "600", cursor: "pointer",
+              }}
+            >
+              {controlMode === "host" ? "🔒 Host Only" : "🔓 Everyone"}
+            </button>
+          )}
         </div>
 
         {/* Floating Reactions */}
@@ -419,6 +461,26 @@ export default function VideoPlayer({ roomId, videoId, onVideoChange, onEmitRead
             background: `linear-gradient(90deg, ${V}, #a78bfa, ${V2})`, zIndex: 2,
           }} />
           <div id="yt-player" style={{ width: "100%", height: "100%" }} />
+
+          {/* Host control overlay — non-host users ke liye */}
+          {!canControl && (
+            <div style={{
+              position: "absolute", inset: 0, zIndex: 5,
+              display: "flex", alignItems: "flex-start", justifyContent: "flex-start",
+              padding: "12px",
+              pointerEvents: "all",
+              cursor: "not-allowed",
+            }}>
+              <div style={{
+                background: "rgba(0,0,0,0.6)", color: "white",
+                padding: "6px 14px", borderRadius: "20px",
+                fontSize: "12px", fontWeight: "600",
+                pointerEvents: "none",
+              }}>
+                👑 Host is controlling
+              </div>
+            </div>
+          )}
 
           {/* Queue — floating top right inside player */}
           {queue.length > 0 && (
