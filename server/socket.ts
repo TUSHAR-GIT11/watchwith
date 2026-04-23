@@ -6,7 +6,7 @@ const io = new Server(3002, {
 
 console.log("🚀 Socket server running on port 3002");
 
-const roomState: Record<string, { videoId: string; time: number; isPlaying: boolean }> = {};
+const roomState: Record<string, { videoId: string; time: number; isPlaying: boolean; serverTime: number }> = {};
 const roomUsers: Record<string, Record<string, string>> = {};
 const roomQueue: Record<string, string[]> = {};
 const roomHost: Record<string, string> = {};
@@ -65,7 +65,7 @@ io.on("connection", (socket) => {
     socket.on("play-next", (roomId) => {
         if (!roomQueue[roomId] || roomQueue[roomId].length === 0) return;
         const nextVideo = roomQueue[roomId].shift();
-        roomState[roomId] = { videoId: nextVideo!, time: 0, isPlaying: false };
+        roomState[roomId] = { videoId: nextVideo!, time: 0, isPlaying: false, serverTime: Date.now() };
         io.to(roomId).emit("video-change", nextVideo);
         io.to(roomId).emit("queue-update", roomQueue[roomId]);
     });
@@ -81,6 +81,7 @@ io.on("connection", (socket) => {
         if (roomState[roomId]) {
             roomState[roomId].isPlaying = true;
             roomState[roomId].time = time;
+            roomState[roomId].serverTime = Date.now()
         }
         socket.to(roomId).emit("play", time);
     });
@@ -92,6 +93,7 @@ io.on("connection", (socket) => {
         if (roomState[roomId]) {
             roomState[roomId].isPlaying = false;
             roomState[roomId].time = time;
+            roomState[roomId].serverTime = Date.now()
         }
         socket.to(roomId).emit("pause", time);
     });
@@ -102,6 +104,7 @@ io.on("connection", (socket) => {
 
         if (roomState[roomId]) {
             roomState[roomId].time = time;
+            roomState[roomId].serverTime = Date.now()
         }
         socket.to(roomId).emit("seek", time);
     });
@@ -114,7 +117,7 @@ io.on("connection", (socket) => {
     });
 
     socket.on("video-change", (roomId, videoId) => {
-        roomState[roomId] = { videoId, time: 0, isPlaying: false };
+        roomState[roomId] = { videoId, time: 0, isPlaying: false, serverTime: Date.now() };
         console.log(`🎬 Video saved: room=${roomId} video=${videoId}`);
         socket.to(roomId).emit("video-change", videoId);
     });

@@ -165,14 +165,21 @@ export default function VideoPlayer({ roomId, videoId, onVideoChange, onEmitRead
       setQueue(q);
     });
 
-    socketRef.current.on("sync-state", (state: { videoId: string; time: number; isPlaying: boolean }) => {
+    socketRef.current.on("sync-state", (state: { videoId: string; time: number; isPlaying: boolean; serverTime: number }) => {
       if (!state) return;
       videoIdRef.current = state.videoId;
       onVideoChange(state.videoId);
 
       const trySeek = () => {
         if (playerReady.current && playerRef.current) {
-          playerRef.current.seekTo(state.time, true);
+          // Network lag compensate karo
+          // Agar video play ho rahi thi toh elapsed time add karo
+          const networkDelay = (Date.now() - state.serverTime) / 1000; // seconds mein
+          const adjustedTime = state.isPlaying
+            ? state.time + networkDelay  // lag compensate
+            : state.time;               // paused tha toh as-is
+
+          playerRef.current.seekTo(adjustedTime, true);
           if (state.isPlaying) {
             playerRef.current.playVideo();
           }
@@ -180,7 +187,7 @@ export default function VideoPlayer({ roomId, videoId, onVideoChange, onEmitRead
           window.setTimeout(trySeek, 300);
         }
       };
-      trySeek(); // call karo
+      trySeek();
     });
 
     socketRef.current.on("typing", (user: string) => {
