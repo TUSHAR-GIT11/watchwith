@@ -27,7 +27,6 @@ export default function VideoPlayer({ roomId, videoId, onVideoChange, onEmitRead
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const playerReady = useRef(false);
   const typingTimerRef = useRef<any>(null);
-
   const [connected, setConnected] = useState(false);
   const [joined, setJoined] = useState(false);
   const [username, setUserName] = useState("");
@@ -40,6 +39,7 @@ export default function VideoPlayer({ roomId, videoId, onVideoChange, onEmitRead
   const [reactions, setReactions] = useState<{ id: number; emoji: string; left: number, user: string }[]>([]);
   const [queue, setQueue] = useState<string[]>([])
   const [isHost, setIsHost] = useState(false)
+  const [countdown, setCountDown] = useState<number | null>(null)
   const [controlMode, setControlMode] = useState<"host" | "all">("host")
   const canControlRef = useRef(false)
   const hostInfoReceived = useRef(false)
@@ -118,6 +118,36 @@ export default function VideoPlayer({ roomId, videoId, onVideoChange, onEmitRead
     socketRef.current.on("user-left", (username: string) => {
       showToast(`${username} left the room`, "leave");
     });
+
+    socketRef.current.on("countdown-start", () => {
+    // Pehle pause karo
+    if (playerRef.current && playerReady.current) {
+        playerRef.current.pauseVideo();
+    }
+    
+    let count = 3;
+    setCountDown(count);
+    
+    const timer = setInterval(() => {
+        count -= 1;
+        if (count === 0) {
+            setCountDown(0);
+            clearInterval(timer);
+            // Play karo
+            setTimeout(() => {
+                setCountDown(null);
+                isSyncing.current = true;
+                if (playerRef.current && playerReady.current) {
+                    playerRef.current.playVideo();
+                }
+                setTimeout(() => (isSyncing.current = false), 500);
+            }, 800);
+        } else {
+            setCountDown(count);
+        }
+    }, 1000);
+});
+
 
     socketRef.current.on("disconnect", () => setConnected(false));
 
@@ -388,6 +418,21 @@ export default function VideoPlayer({ roomId, videoId, onVideoChange, onEmitRead
               {controlMode === "host" ? "🔒 Host Only" : "🔓 Everyone"}
             </button>
           )}
+          {isHost && (
+            <button
+              onClick={() => { socketRef.current?.emit("start-countdown", roomId); }}
+              style={{
+                padding: "3px 12px",
+                background: "#eff6ff",
+                border: "1px solid #bfdbfe",
+                borderRadius: "20px",
+                color: "#1d4ed8",
+                fontSize: "11px", fontWeight: "600", cursor: "pointer",
+              }}
+            >
+              🎬 Start 3...2...1
+            </button>
+          )}
         </div>
 
         {/* Floating Reactions */}
@@ -478,6 +523,39 @@ export default function VideoPlayer({ roomId, videoId, onVideoChange, onEmitRead
                 pointerEvents: "none",
               }}>
                 👑 Host is controlling
+              </div>
+            </div>
+          )}
+
+          {/* Countdown overlay */}
+          {countdown !== null && (
+            <div style={{
+              position: "absolute", inset: 0, zIndex: 20,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              background: "rgba(0,0,0,0.75)",
+              backdropFilter: "blur(4px)",
+            }}>
+              <div style={{
+                display: "flex", flexDirection: "column",
+                alignItems: "center", gap: "8px",
+              }}>
+                <div style={{
+                  fontSize: countdown === 0 ? "72px" : "120px",
+                  fontWeight: "900",
+                  color: "white",
+                  lineHeight: 1,
+                  textShadow: "0 0 40px rgba(124,58,237,0.8)",
+                  transition: "font-size 0.2s ease",
+                  animation: "countdownPop 0.4s ease",
+                }}>
+                  {countdown === 0 ? "▶" : countdown}
+                </div>
+                <div style={{
+                  fontSize: "16px", color: "rgba(255,255,255,0.7)",
+                  fontWeight: "600", letterSpacing: "2px",
+                }}>
+                  {countdown === 0 ? "WATCH TOGETHER!" : "GET READY..."}
+                </div>
               </div>
             </div>
           )}

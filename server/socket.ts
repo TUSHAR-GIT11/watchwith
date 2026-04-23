@@ -106,6 +106,13 @@ io.on("connection", (socket) => {
         socket.to(roomId).emit("seek", time);
     });
 
+    socket.on("start-countdown", (roomId) => {
+        // Client side pe isHost check already hai, server pe bhi verify karo
+        console.log(`🎬 start-countdown: roomId=${roomId}, socket=${socket.id}, host=${roomHost[roomId]}`);
+        if (roomHost[roomId] && roomHost[roomId] !== socket.id) return;
+        io.to(roomId).emit("countdown-start");
+    });
+
     socket.on("video-change", (roomId, videoId) => {
         roomState[roomId] = { videoId, time: 0, isPlaying: false };
         console.log(`🎬 Video saved: room=${roomId} video=${videoId}`);
