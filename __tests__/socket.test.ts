@@ -10,7 +10,7 @@ describe("Socket.io Server Tests", () => {
     const httpServer = createServer();
     ioServer = new Server(httpServer, { cors: { origin: "*" } });
 
-    // Same logic as socket.ts
+    
     const roomState: Record<string, any> = {};
     const roomUsers: Record<string, Record<string, string>> = {};
 
@@ -72,7 +72,7 @@ describe("Socket.io Server Tests", () => {
     ioServer.close();
   });
 
-  // ── Test 1: User join kare toh user-count mile ──
+  
   test("user joins room and receives user-count", (done) => {
     const client = Client(serverUrl);
     client.on("connect", () => {
@@ -85,7 +85,7 @@ describe("Socket.io Server Tests", () => {
     });
   });
 
-  // ── Test 2: Play event sync hota hai ──
+  
   test("play event syncs to other users", (done) => {
     const client1 = Client(serverUrl);
     const client2 = Client(serverUrl);

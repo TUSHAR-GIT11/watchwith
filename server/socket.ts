@@ -1,10 +1,16 @@
 import { Server } from "socket.io";
 
-const io = new Server(3002, {
-    cors: { origin: "*" }
+const PORT = parseInt(process.env.PORT || "3002");
+
+const io = new Server(PORT, {
+    cors: {
+        origin: "*",
+        methods: ["GET", "POST"]
+    },
+    transports: ["websocket", "polling"]
 });
 
-console.log("🚀 Socket server running on port 3002");
+console.log(`🚀 Socket server running on port ${PORT}`);
 
 const roomState: Record<string, { videoId: string; time: number; isPlaying: boolean; serverTime: number }> = {};
 const roomUsers: Record<string, Record<string, string>> = {};
