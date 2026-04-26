@@ -321,7 +321,7 @@ export default function VideoPlayer({ roomId, videoId, onVideoChange, onEmitRead
             style={{
               width: "100%", padding: "12px 16px", borderRadius: "12px",
               border: nameFocused ? `1.5px solid ${V}` : `1.5px solid ${BORDER}`,
-              background: nameFocused ? "#fdfcff" : SUBTLE,
+              background: nameFocused ? (D ? "#000000" : "#ffffff") : SUBTLE,
               color: TEXT, fontSize: "14px", outline: "none",
               marginBottom: "12px", boxSizing: "border-box",
               boxShadow: nameFocused ? `0 0 0 3px rgba(124,58,237,0.1)` : "none",
