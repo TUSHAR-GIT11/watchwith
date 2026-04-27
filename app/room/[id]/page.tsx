@@ -13,6 +13,7 @@ export default function RoomPage({ params }: any) {
   const [searchResults, setSearchResults] = useState<{videoId: string; title:string; thumbnail:string; channel:string}[]>([])
   const [searching, setSearching] = useState(false)
   const [showResults,setShowResults] = useState(false)
+  const [shared, setShared] = useState(false)
   const { theme, toggleTheme } = useTheme();
   const emitVideoChangeRef = useRef<((vid: string) => void) | null>(null);
   const addToQueueRef = useRef<((vid: string) => void) | null>(null);
@@ -64,6 +65,20 @@ export default function RoomPage({ params }: any) {
     navigator.clipboard.writeText(id);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const roomUrl = typeof window !== "undefined"
+    ? `${window.location.origin}/room/${id}`
+    : "";
+
+  const copyLink = () => {
+    navigator.clipboard.writeText(roomUrl);
+    setShared(true);
+    setTimeout(() => setShared(false), 2000);
+  };
+
+  const shareWhatsApp = () => {
+    window.open(`https://wa.me/?text=Watch%20with%20me%20on%20WatchWith!%20${encodeURIComponent(roomUrl)}`);
   };
 
   return (
@@ -208,6 +223,30 @@ export default function RoomPage({ params }: any) {
             <span style={{ fontWeight: "700", letterSpacing: "0.5px" }}>{id}</span>
             <span style={{ fontSize: "12px" }}>{copied ? "✅" : "📋"}</span>
           </div>
+
+          {/* Share buttons */}
+          <button onClick={copyLink} style={{
+            padding: "7px 14px",
+            background: shared ? "#f0fdf4" : (D ? "rgba(255,255,255,0.06)" : "#f2f2f5"),
+            border: `1.5px solid ${shared ? "#bbf7d0" : (D ? "rgba(255,255,255,0.1)" : "#e0e0e0")}`,
+            borderRadius: "10px", cursor: "pointer",
+            fontSize: "12px", fontWeight: "600",
+            color: shared ? "#15803d" : (D ? "#aaa" : "#555"),
+            transition: "all 0.2s",
+          }}>
+            {shared ? "✅ Copied!" : "🔗 Copy Link"}
+          </button>
+
+          <button onClick={shareWhatsApp} style={{
+            padding: "7px 14px",
+            background: "#f0fdf4",
+            border: "1.5px solid #bbf7d0",
+            borderRadius: "10px", cursor: "pointer",
+            fontSize: "12px", fontWeight: "600",
+            color: "#15803d",
+          }}>
+            💬 WhatsApp
+          </button>
         </div>
       </nav>
 
