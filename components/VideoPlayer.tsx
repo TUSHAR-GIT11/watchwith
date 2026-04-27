@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { io, Socket } from "socket.io-client";
+import { useSession } from "next-auth/react";
 
 export default function VideoPlayer({ roomId, videoId, onVideoChange, onEmitReady, onQueueReady, theme = "light" }: {
   roomId: string;
@@ -18,6 +19,7 @@ export default function VideoPlayer({ roomId, videoId, onVideoChange, onEmitRead
   const TEXT = D ? "#f0eeff" : "#111111";
   const MUTED = D ? "#555577" : "#999999";
   const SUBTLE = D ? "rgba(255,255,255,0.05)" : "#f2f2f5";
+  const { data: session } = useSession();
   const V = "#7c3aed";
   const V2 = "#6d28d9";
   const playerRef = useRef<any>(null);
@@ -30,6 +32,13 @@ export default function VideoPlayer({ roomId, videoId, onVideoChange, onEmitRead
   const [connected, setConnected] = useState(false);
   const [joined, setJoined] = useState(false);
   const [username, setUserName] = useState("");
+
+  // Google login se naam auto-fill karo
+  useEffect(() => {
+    if (session?.user?.name && !username) {
+      setUserName(session.user.name.split(" ")[0]);
+    }
+  }, [session]);
   const [messages, setMessages] = useState<{ user: string; text: string; time: string }[]>([]);
   const [chatInput, setChatInput] = useState("");
   const [userCount, setUserCount] = useState(0);
@@ -304,7 +313,11 @@ export default function VideoPlayer({ roomId, videoId, onVideoChange, onEmitRead
             width: "68px", height: "68px", background: "linear-gradient(135deg, #ede9fe, #ddd6fe)",
             borderRadius: "18px", display: "flex", alignItems: "center", justifyContent: "center",
             fontSize: "28px", margin: "0 auto 20px", boxShadow: "0 4px 16px rgba(124,58,237,0.15)",
-          }}>🎬</div>
+          }}>
+            {session?.user?.image
+              ? <img src={session.user.image} style={{ width: "68px", height: "68px", borderRadius: "18px", objectFit: "cover" }} />
+              : "🎬"}
+          </div>
           <h2 style={{ margin: "0 0 6px", fontSize: "22px", fontWeight: "800", color: TEXT, letterSpacing: "-0.4px" }}>
             Ready to watch?
           </h2>
