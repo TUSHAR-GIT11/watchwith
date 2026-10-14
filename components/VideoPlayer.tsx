@@ -32,6 +32,8 @@ export default function VideoPlayer({ roomId, videoId, onVideoChange, onEmitRead
   const [connected, setConnected] = useState(false);
   const [joined, setJoined] = useState(false);
   const [username, setUserName] = useState("");
+  const [showTransferMenu,setShowTransferMenu] = useState(false)
+  const [users, setUsers] = useState<string[]>([])
 
   // Google login se naam auto-fill karo
   useEffect(() => {
@@ -128,6 +130,15 @@ export default function VideoPlayer({ roomId, videoId, onVideoChange, onEmitRead
       showToast(`${username} left the room`, "leave");
     });
 
+    socketRef.current.on("users-updated",(userList: string[])=>{
+      setUsers(userList)
+    })
+
+    const transferHost = (targetUsername: string)=>{
+       socketRef.current?.emit("transfer-host", roomId, targetUsername)
+       setShowTransferMenu(false)
+    }
+
     socketRef.current.on("countdown-start", () => {
     // Pehle pause karo
     if (playerRef.current && playerReady.current) {
@@ -169,6 +180,10 @@ export default function VideoPlayer({ roomId, videoId, onVideoChange, onEmitRead
     socketRef.current.on("video-change", (newVideoId: string) => {
       videoIdRef.current = newVideoId;
       onVideoChange(newVideoId);
+      // Player ko immediately load karo agar ready ho gya
+      if (playerRef.current && playerReady.current) {
+        playerRef.current.loadVideoById(newVideoId);
+      }
     });
     socketRef.current.on("queue-update", (q: string[]) => {
       setQueue(q);

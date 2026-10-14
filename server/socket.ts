@@ -62,6 +62,17 @@ io.on("connection", (socket) => {
         console.log(`🎛️ Room ${roomId} control mode: ${mode}`);
     });
 
+    socket.on("transfer-host", (roomId,targetUsername)=>{
+        if(roomHost[roomId] !== socket.id) return;
+        const targetSocketId = Object.keys(roomUsers[roomId] || {}).find(sid => roomUsers[roomId][sid] === targetUsername)
+        if(!targetUsername) return;
+        roomHost[roomId] = targetUsername
+        io.to(roomId).emit("control-mode-changed",{
+            hostSocketId: targetSocketId,
+            controlMode: roomControlMode[roomId] || "host"
+        })
+    })
+
     socket.on("add-to-queue", (roomId, videoId) => {
         if (!roomQueue[roomId]) roomQueue[roomId] = [];
         roomQueue[roomId].push(videoId);
